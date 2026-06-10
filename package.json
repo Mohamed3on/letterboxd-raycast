@@ -1,0 +1,66 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "letterboxd",
+  "title": "Letterboxd",
+  "description": "Search for movies and shows and open them on Letterboxd",
+  "icon": "icon.png",
+  "author": "mohamed3on",
+  "contributors": [
+    "rafael_garcia",
+    "ridemountainpig"
+  ],
+  "categories": [
+    "Media"
+  ],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "search",
+      "title": "Search Movies",
+      "subtitle": "Letterboxd",
+      "description": "Search for a movie or show and open it on Letterboxd",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "tmdbApiKey",
+      "title": "TMDB API Key",
+      "description": "Letterboxd has no public search API and blocks scraping behind Cloudflare, so search is powered by TMDB (Letterboxd's own data source). Get a free key at themoviedb.org → Settings → API → \"API Key (v3 auth)\". A v4 Read Access Token works too.",
+      "type": "password",
+      "required": true
+    },
+    {
+      "name": "autoOpenSelected",
+      "title": "Selected Text",
+      "label": "Jump straight to the top result",
+      "description": "When you launch the command with text selected, open the top match immediately instead of showing the list. Does not apply to clipboard text.",
+      "type": "checkbox",
+      "default": true,
+      "required": false
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.104.5",
+    "@raycast/utils": "^2.2.2"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.1.1",
+    "@types/node": "25.2.1",
+    "@types/react": "19.2.13",
+    "eslint": "^10.0.0",
+    "prettier": "3.8.1",
+    "typescript": "^5.9.3"
+  },
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint",
+    "publish": "npx @raycast/api@latest publish"
+  },
+  "platforms": [
+    "macOS",
+    "Windows"
+  ]
+}
