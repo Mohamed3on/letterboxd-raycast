@@ -38,6 +38,13 @@
       "type": "checkbox",
       "default": true,
       "required": false
+    },
+    {
+      "name": "typesafeApiKey",
+      "title": "TypeSafe API Key",
+      "description": "Optional. When no result's title is exactly the selection (a year or director in it, a dropped accent, a partial title), TypeSafe's Jev picks the one it names, and only opens it when sure. Falls back to TYPESAFE_API_KEY in ~/.config/typesafe/env.",
+      "type": "password",
+      "required": false
     }
   ],
   "dependencies": {

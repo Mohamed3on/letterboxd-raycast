@@ -2,7 +2,7 @@
 
 Quickly search for a movie or show and open it on Letterboxd, straight from Raycast.
 
-Highlight a title in any app and run the command — it prefills from your selection and (optionally) jumps straight to the top match.
+Highlight a title in any app and run the command — it prefills from your selection and (optionally) jumps straight to the top match. When no result's title is exactly the selection ("Heat 1995", "Amelie", "The Office US"), [TypeSafe](https://typesafe.ai)'s Jev picks the one it names first, and opens it only when sure; otherwise the list shows, with its best guess selected when one clearly leads. Optional: set the **TypeSafe API Key** preference, or `TYPESAFE_API_KEY` in `~/.config/typesafe/env`.
 
 ## Why TMDB?
 

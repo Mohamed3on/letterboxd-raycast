@@ -10,6 +10,7 @@ export interface Title {
   originalName?: string;
   year?: string;
   rating?: number;
+  votes?: number;
   posterUrl?: string;
 }
 
@@ -50,22 +51,25 @@ function toTitle(raw: RawResult): Title {
     originalName: raw.original_title ?? raw.original_name,
     year: (raw.release_date ?? raw.first_air_date ?? "").slice(0, 4) || undefined,
     rating: raw.vote_average || undefined,
+    votes: raw.vote_count || undefined,
     posterUrl: raw.poster_path ? `${POSTER_BASE}${raw.poster_path}` : undefined,
   };
 }
 
+/** Whether a result's title, or its original title, is exactly the query. */
+const isExact = (r: RawResult, query: string) =>
+  [r.title ?? r.name, r.original_title ?? r.original_name].some(
+    (name) => (name ?? "").toLowerCase() === query.trim().toLowerCase(),
+  );
+
 // Relevancy: exact title match → films before shows → higher rating → newer year. Stable, so TMDB's
 // own order breaks remaining ties. Ranks the raw payload so vote_count can discount unrated noise.
 function rank(results: RawResult[], query: string): RawResult[] {
-  const q = query.trim().toLowerCase();
-  const titleOf = (r: RawResult) => (r.title ?? r.name ?? "").toLowerCase();
-  const originalOf = (r: RawResult) => (r.original_title ?? r.original_name ?? "").toLowerCase();
-  const isExact = (r: RawResult) => titleOf(r) === q || originalOf(r) === q;
   const yearOf = (r: RawResult) => Number((r.release_date ?? r.first_air_date ?? "").slice(0, 4)) || 0;
   const ratingOf = (r: RawResult) => (r.vote_count && r.vote_count > 0 ? (r.vote_average ?? 0) : 0);
 
   return [...results].sort((a, b) => {
-    const exact = Number(isExact(b)) - Number(isExact(a));
+    const exact = Number(isExact(b, query)) - Number(isExact(a, query));
     if (exact) return exact;
     const film = Number(b.media_type === "movie") - Number(a.media_type === "movie");
     if (film) return film;
@@ -74,8 +78,8 @@ function rank(results: RawResult[], query: string): RawResult[] {
   });
 }
 
-/** Search movies + shows, returning ranked, normalized Titles. */
-export function useTitleSearch(query: string): { titles: Title[]; isLoading: boolean } {
+/** Search movies + shows, returning ranked, normalized Titles, and whether the top one's title is exactly the query. */
+export function useTitleSearch(query: string): { titles: Title[]; exact: boolean; isLoading: boolean } {
   const { url, headers } = tmdbRequest("/search/multi", { query, include_adult: "false" });
   const { data, isLoading } = useFetch<{ results?: RawResult[] }>(url, {
     execute: query.trim().length > 0,
@@ -86,12 +90,13 @@ export function useTitleSearch(query: string): { titles: Title[]; isLoading: boo
     },
   });
 
-  const titles = useMemo(() => {
+  const { titles, exact } = useMemo(() => {
     const found = (data?.results ?? []).filter((r) => r.media_type === "movie" || r.media_type === "tv");
-    return rank(found, query).map(toTitle);
+    const ranked = rank(found, query);
+    return { titles: ranked.map(toTitle), exact: ranked.length > 0 && isExact(ranked[0], query) };
   }, [data, query]);
 
-  return { titles, isLoading };
+  return { titles, exact, isLoading };
 }
 
 const tmdbType = (title: Title) => (title.kind === "film" ? "movie" : "tv");

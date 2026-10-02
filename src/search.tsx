@@ -13,21 +13,34 @@ import {
 import { showFailureToast } from "@raycast/utils";
 import { useEffect, useRef, useState } from "react";
 import { destinationFor, letterboxdSearchUrl, shareUrl, tmdbPageUrl, useTitleSearch, type Title } from "./catalog";
+import { guessTitle, typesafeKey } from "./jev";
 
 interface Preferences {
   autoOpenSelected: boolean;
+  typesafeApiKey?: string;
 }
+
+const itemId = (title: Title) => `${title.kind}-${title.id}`;
 
 export default function Command() {
   const [searchText, setSearchText] = useState("");
   const [query, setQuery] = useState("");
-  const { autoOpenSelected } = getPreferenceValues<Preferences>();
+  const [preselectedId, setPreselectedId] = useState<string>();
+  const { autoOpenSelected, typesafeApiKey } = getPreferenceValues<Preferences>();
 
   // When launched from a selection (with auto-open on) we hide the search UI behind a brief loader
   // and jump straight to the result, so it feels like a direct action rather than "a search opened".
   const [autoOpening, setAutoOpening] = useState(autoOpenSelected);
   const selectedQueryRef = useRef<string | null>(null);
   const autoOpenedRef = useRef(false);
+  // Closed while Jev was deciding: its late answer mustn't open anything.
+  const closedRef = useRef(false);
+  useEffect(() => {
+    closedRef.current = false;
+    return () => {
+      closedRef.current = true;
+    };
+  }, []);
 
   // Prefill the search bar with the text highlighted in the frontmost app, so you can just select a
   // title and run the command. Needs Raycast's Accessibility permission; ignored if nothing is selected.
@@ -52,7 +65,7 @@ export default function Command() {
     return () => clearTimeout(timeout);
   }, [searchText]);
 
-  const { titles, isLoading } = useTitleSearch(query);
+  const { titles, exact, isLoading } = useTitleSearch(query);
 
   // Open a Title, then reset to the root search with a cleared bar — clears the input after opening
   // and guarantees the next launch starts fresh, so a new selection always wins.
@@ -77,8 +90,18 @@ export default function Command() {
       return;
     }
     autoOpenedRef.current = true;
-    void openTitle(titles[0]);
-  }, [autoOpening, isLoading, query, titles]);
+    if (exact) return void openTitle(titles[0]);
+    // No title is exactly the selection: Jev picks the one it names, behind the same loader. A sure pick
+    // opens; a clear lead shows the list with it preselected, so Enter opens it; anything else shows the
+    // list. Without Jev (no key, slow, failed), the top result opens as before.
+    void guessTitle(titles, query, typesafeKey(typesafeApiKey)).then((guess) => {
+      if (closedRef.current) return;
+      if (guess === undefined) return openTitle(titles[0]);
+      if (guess?.sure) return openTitle(guess.title);
+      if (guess) setPreselectedId(itemId(guess.title));
+      setAutoOpening(false);
+    });
+  }, [autoOpening, exact, isLoading, query, titles]);
 
   if (autoOpening) {
     return <Detail isLoading markdown={selectedQueryRef.current ? `Opening **${selectedQueryRef.current}**…` : ""} />;
@@ -90,6 +113,7 @@ export default function Command() {
       searchText={searchText}
       onSearchTextChange={setSearchText}
       searchBarPlaceholder="Search for a movie or show…"
+      selectedItemId={query === selectedQueryRef.current ? preselectedId : undefined}
     >
       {titles.length === 0 ? (
         <List.EmptyView
@@ -105,7 +129,8 @@ export default function Command() {
 
           return (
             <List.Item
-              key={`${title.kind}-${title.id}`}
+              key={itemId(title)}
+              id={itemId(title)}
               icon={title.posterUrl ? { source: title.posterUrl } : Icon.FilmStrip}
               title={title.name}
               subtitle={[title.year, title.originalName !== title.name ? title.originalName : undefined]
